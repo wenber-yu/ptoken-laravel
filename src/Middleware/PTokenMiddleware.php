@@ -79,8 +79,10 @@ class PTokenMiddleware
         $config = $this->ptoken->getConfig();
 
         $tokenUser = new PTokenUser(
+            $tokenData['tokenId'] ?? '',
             $tokenData['userKey'],
             $tokenData['data'],
+            $tokenData['abilities'] ?? ['*'],
             $tokenData['createAt'],
             $tokenData['expireAt'],
             $config->user_model,
@@ -89,6 +91,7 @@ class PTokenMiddleware
         $request->attributes->set('ptokenUser', $tokenUser);
         $request->attributes->set('ptokenUserKey', $tokenData['userKey']);
         $request->attributes->set('ptokenData', $tokenData['data']);
+        $request->attributes->set('ptokenAbilities', $tokenData['abilities'] ?? ['*']);
 
         return $request;
     }

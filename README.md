@@ -1,6 +1,6 @@
 # PToken Laravel
 
-PToken 的 Laravel 集成包，为 Laravel 应用提供服务端 Token 认证能力。支持中间件自动拦截、User Model 自动关联等功能。
+PToken 的 Laravel 集成包，为 Laravel 应用提供服务端 Token 认证能力。支持中间件自动拦截、Token 能力（abilities）检查、User Model 自动关联等功能。
 
 ## 环境要求
 
@@ -155,12 +155,35 @@ public function logout(Request $request)
 }
 ```
 
+## Token 能力检查
+
+认证通过后，可通过 `PTokenUser` 的 `tokenCan()` / `tokenCant()` 方法检查 Token 能力：
+
+```php
+public function updateProfile(Request $request)
+{
+    $tokenUser = $request->attributes->get('ptokenUser');
+
+    // 检查 Token 是否有 write 能力
+    if ($tokenUser->tokenCant('write')) {
+        return response()->json(['message' => '无写入权限'], 403);
+    }
+
+    // 或直接获取能力列表
+    $abilities = $request->attributes->get('ptokenAbilities');
+    // ['read', 'write', ...]
+}
+```
+
+> 能力不满足时也可抛出 `PTokenForbiddenException`（HTTP 403），配合全局异常处理器统一处理。
+
 ## 认证失败处理
 
 认证失败时，中间件抛出 `PTokenAuthException`。可在 `app/Exceptions/Handler.php` 中统一捕获：
 
 ```php
 use Wenbo\PToken\Laravel\Exceptions\PTokenAuthException;
+use Wenbo\PToken\Exceptions\PTokenForbiddenException;
 
 public function render($request, Throwable $e)
 {
@@ -169,6 +192,13 @@ public function render($request, Throwable $e)
             'code'    => 401,
             'message' => $e->getMessage(),
         ], 401);
+    }
+
+    if ($e instanceof PTokenForbiddenException) {
+        return response()->json([
+            'code'    => 403,
+            'message' => $e->getMessage(),
+        ], 403);
     }
 
     return parent::render($request, $e);
