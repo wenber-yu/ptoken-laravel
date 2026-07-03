@@ -1,0 +1,68 @@
+{
+    "name": "wenber-yu/ptoken-laravel",
+    "version": "0.1.1",
+    "description": "Laravel integration for PToken - server-side token management with middleware.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "token",
+        "auth",
+        "laravel",
+        "middleware",
+        "ptoken"
+    ],
+    "authors": [
+        {
+            "name": "wenbo"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "wenber-yu/ptoken-core": "*",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/contracts": "^10.0|^11.0|^12.0|^13.0",
+        "psr/http-message": "^1.0|^2.0"
+    },
+    "repositories": [
+        {"type": "path", "url": "../ptoken-core"}
+    ],
+    "require-dev": {
+        "pestphp/pest": "^2.0|^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "phpunit/phpunit": "^10.0|^11.0",
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "laravel/laravel": "^10.0|^11.0|^12.0|^13.0"
+    },
+
+    "autoload": {
+        "psr-4": {
+            "Wenbo\\PToken\\Laravel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PToken\\Laravel\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Wenbo\\PToken\\Laravel\\ServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "policy": {
+        "advisories": {
+            "block": false
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}
