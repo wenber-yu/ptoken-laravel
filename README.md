@@ -107,12 +107,15 @@ class AuthController extends Controller
         }
 
         $ptoken = app(PToken::class);
-        $token = $ptoken->generate((string)$user->id, [
+        $result = $ptoken->generate((string)$user->id, ['*'], [
             'name'  => $user->name,
             'email' => $user->email,
         ]);
 
-        return response()->json(['token' => $token]);
+        return response()->json([
+            'token'        => $result['token'],
+            'refreshToken' => $result['refreshToken'],
+        ]);
     }
 }
 ```

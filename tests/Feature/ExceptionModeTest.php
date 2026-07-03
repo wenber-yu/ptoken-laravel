@@ -25,7 +25,6 @@ abstract class ExceptionModeTestCase extends Orchestra
         $app['config']->set('ptoken', [
             'encrypt_key'        => '12345678901234567890123456789012',
             'timeout'            => 3600,
-            'max_refresh'        => 600,
             'token_delimiter'     => '_',
             'multi_login'         => false,
             'user_model'          => null,

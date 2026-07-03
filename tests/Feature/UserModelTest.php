@@ -24,8 +24,8 @@ abstract class UserModelTestCase extends Orchestra
         $app['config']->set('ptoken', [
             'encrypt_key'        => '12345678901234567890123456789012',
             'timeout'            => 3600,
-            'max_refresh'        => 600,
-            'token_delimiter'     => '_',
+            'token_delimiter'     => '.',
+            'token_version'       => 'v1',
             'multi_login'         => false,
             'user_model'          => null,
             'auth_exclude_paths'  => [],
@@ -37,7 +37,7 @@ abstract class UserModelTestCase extends Orchestra
 uses(UserModelTestCase::class);
 
 test('PTokenUser getUser returns null when no userModel configured', function () {
-    $user = new PTokenUser('user1', ['role' => 'admin'], time(), time() + 3600, null);
+    $user = new PTokenUser('tid1', 'user1', ['role' => 'admin'], ['*'], time(), time() + 3600, null, null);
 
     $result = $user->getUser();
     expect($result)->toBeNull();
@@ -45,7 +45,7 @@ test('PTokenUser getUser returns null when no userModel configured', function ()
 });
 
 test('PTokenUser setUser and getUser works', function () {
-    $user = new PTokenUser('user1', ['role' => 'admin'], time(), time() + 3600, null);
+    $user = new PTokenUser('tid2', 'user1', ['role' => 'admin'], ['*'], time(), time() + 3600, null, null);
 
     $mockModel = new stdClass();
     $mockModel->id = 'user1';
@@ -56,7 +56,7 @@ test('PTokenUser setUser and getUser works', function () {
 });
 
 test('PTokenUser hasUser returns false before resolved', function () {
-    $user = new PTokenUser('user1', ['role' => 'admin'], time(), time() + 3600, null);
+    $user = new PTokenUser('tid3', 'user1', ['role' => 'admin'], ['*'], time(), time() + 3600, null, null);
 
     expect($user->hasUser())->toBeFalse();
 });

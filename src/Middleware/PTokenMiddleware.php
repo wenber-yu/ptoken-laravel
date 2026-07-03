@@ -12,7 +12,6 @@ use Illuminate\Http\Request;
 
 class PTokenMiddleware
 {
-    private const string TOKEN_HEADER = 'Authorization';
     private const string TOKEN_PREFIX = 'Bearer ';
 
     public function __construct(
@@ -34,13 +33,25 @@ class PTokenMiddleware
         }
 
         $tokenData = $this->ptoken->get($token);
+
         if ($tokenData === null) {
             throw new PTokenAuthException('Token is invalid or expired');
         }
 
+        $new_token = $tokenData['new_token'] ?? null;
+        unset($tokenData['new_token']);
+
         $request = $this->injectTokenUser($request, $tokenData);
 
-        return $next($request);
+        $response = $next($request);
+
+        // Inject new token header if token was rotated
+        if ($new_token !== null) {
+            $headerName = $this->ptoken->getConfig()->new_token_header;
+            $response->headers->set($headerName, $new_token);
+        }
+
+        return $response;
     }
 
     private function shouldSkip(Request $request): bool
@@ -63,7 +74,8 @@ class PTokenMiddleware
 
     private function extractToken(Request $request): ?string
     {
-        $header = $request->header(self::TOKEN_HEADER);
+        $headerName = $this->ptoken->getConfig()->token_header;
+        $header = $request->header($headerName);
 
         if ($header !== null && $header !== '') {
             return str_starts_with($header, self::TOKEN_PREFIX)
@@ -79,17 +91,18 @@ class PTokenMiddleware
         $config = $this->ptoken->getConfig();
 
         $tokenUser = new PTokenUser(
-            $tokenData['tokenId'] ?? '',
-            $tokenData['userKey'],
+            $tokenData['token_id'] ?? '',
+            $tokenData['user_key'],
             $tokenData['data'],
             $tokenData['abilities'] ?? ['*'],
-            $tokenData['createAt'],
-            $tokenData['expireAt'],
+            $tokenData['create_at'],
+            $tokenData['expire_at'],
             $config->user_model,
+            $tokenData['device'] ?? null,
         );
 
         $request->attributes->set('ptokenUser', $tokenUser);
-        $request->attributes->set('ptokenUserKey', $tokenData['userKey']);
+        $request->attributes->set('ptokenUserKey', $tokenData['user_key']);
         $request->attributes->set('ptokenData', $tokenData['data']);
         $request->attributes->set('ptokenAbilities', $tokenData['abilities'] ?? ['*']);
 

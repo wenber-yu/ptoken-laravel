@@ -30,7 +30,6 @@ function createTestApp(array $config = [])
             $app['config']->set('ptoken', array_merge([
                 'encrypt_key'        => '12345678901234567890123456789012',
                 'timeout'            => 3600,
-                'max_refresh'        => 600,
                 'token_delimiter'     => '_',
                 'multi_login'         => false,
                 'user_model'          => null,

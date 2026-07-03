@@ -25,8 +25,8 @@ abstract class PTokenMiddlewareTestCase extends Orchestra
         $app['config']->set('ptoken', [
             'encrypt_key'        => '12345678901234567890123456789012',
             'timeout'            => 3600,
-            'max_refresh'        => 600,
-            'token_delimiter'     => '_',
+            'token_delimiter'     => '.',
+            'token_version'       => 'v1',
             'multi_login'         => false,
             'user_model'          => null,
             'auth_exclude_paths'  => ['/api/login', '/api/register'],
@@ -46,7 +46,7 @@ function registerRoute($app)
 
 function generateToken($app, string $userKey = 'user1'): string
 {
-    return $app->make(PToken::class)->generate($userKey, ['name' => 'test']);
+    return $app->make(PToken::class)->generate($userKey, ['*'], ['name' => 'test'])['token'];
 }
 
 // 1. 无 token 返回 401
@@ -86,16 +86,18 @@ test('expired token returns 401', function () {
     $token = generateToken($this->app);
 
     // 通过缓存修改 expireAt 为过去时间，模拟过期
-    $delimiter = '_';
-    $parts = explode($delimiter, $token, 2);
-    $encryptedUserKey = $parts[0];
-    $cacheKey = 'ptoken:' . $encryptedUserKey;
+    // token 格式: v1.{encryptedUserKey}.{tokenId}
+    $delimiter = '.';
+    $parts = explode($delimiter, $token, 4);
+    $encryptedUserKey = $parts[1];
+    $tokenId = $parts[2];
+    $cacheKey = 'ptoken:' . $encryptedUserKey . '.' . $tokenId;
 
     $cache = $this->app->make(\Illuminate\Contracts\Cache\Repository::class);
     $cacheData = $cache->get($cacheKey);
     expect($cacheData)->not->toBeNull();
 
-    $cacheData['expireAt'] = time() - 1;
+    $cacheData['expire_at'] = time() - 1;
     $cache->put($cacheKey, $cacheData, 3600);
 
     $this->withHeader('Authorization', 'Bearer ' . $token)
@@ -114,27 +116,26 @@ test('auth_exclude_paths skips auth', function () {
         ->assertJson(['ok' => true]);
 });
 
-// 6. multi_login=false 测试（当前实现下两个 token 因共享缓存键均有效）
-test('multi_login false overwrites cache but does not invalidate old token', function () {
+// 6. multi_login=false 测试（每个 token 有独立 ID，旧 token 被正确销毁）
+test('multi_login false invalidates old token', function () {
     $this->app['config']->set('ptoken.multi_login', false);
     $this->app->forgetInstance(PToken::class);
 
     registerRoute($this->app);
 
     $ptoken = $this->app->make(PToken::class);
-    $token1 = $ptoken->generate('user1', ['name' => 'first']);
-    $token2 = $ptoken->generate('user1', ['name' => 'second']);
+    $result1 = $ptoken->generate('user1', ['*'], ['name' => 'first']);
+    $token1 = $result1['token'];
+    $result2 = $ptoken->generate('user1', ['*'], ['name' => 'second']);
+    $token2 = $result2['token'];
 
     // token2 应该有效
     $this->withHeader('Authorization', 'Bearer ' . $token2)
         ->get('/api/test')
         ->assertStatus(200);
 
-    // 注意：当前 PToken 核心实现中，token 仅通过缓存键（基于加密 userKey）查找。
-    // 由于两个 token 的加密 userKey 相同，生成 token2 时销毁旧缓存条目并写入新条目后，
-    // token1 查找相同缓存键仍能命中 token2 的有效数据，因此旧 token 依然通过验证。
-    // 如需严格互踢，PToken 核心需要在 token 中加入唯一标识并与缓存值比对。
+    // token1 已被销毁（multi_login=false 时新登录销毁旧 token）
     $this->withHeader('Authorization', 'Bearer ' . $token1)
         ->get('/api/test')
-        ->assertStatus(200);
+        ->assertStatus(401);
 });
